@@ -15,14 +15,13 @@ const int TERMINO = 7;
 
 LiquidCrystal lcd(9, 8, 5, 4, 10, 11);
 
-int contadorDeBeeps = 0;
 int estado = AGUARDANDO_INICIO;
 long tempoTotal;
 long ultimaAtualizacao;
 long tempoBrancas, tempoPretas;
 long startBrancas, startPretas;
 long tempoRestanteBrancas, tempoRestantePretas;
-int indexSetup=0, contadorJogadas=0; 
+int indexSetup, contadorJogadas=0; 
 int ultimoEstadoAntesDaPausa;
 long configs[] = { 15000, 60000, 180000, 300000, 600000, 900000, 1200000, 1800000, 3600000, 7200000 } ;
 int memoria;
@@ -145,6 +144,8 @@ void loop() {
         if(digitalRead(buttonPinBranca)==0 && digitalRead(buttonPinPreta)==0) {
           reset();
           estado=AGUARDANDO_INICIO;
+          beepNVezes(1,200);
+          delay(2000);
         }
       }
       delay(200);
@@ -158,6 +159,8 @@ void reset() {
   lcd.clear();
   tempoRestanteBrancas = tempoTotal;
   tempoRestantePretas = tempoTotal;
+  contadorJogadas=0;
+  ultimoEstadoAntesDaPausa = AGUARDANDO_INICIO;
 }
 
 void atualizaDisplay(long tempoBrancas, long tempoPretas) {
