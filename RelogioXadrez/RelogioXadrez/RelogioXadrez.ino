@@ -71,7 +71,7 @@ void loop() {
     case BRANCA_JOGA:
       tempoBrancas = tempoAtual - startBrancas;
       atualizaDisplay(tempoRestanteBrancas - tempoBrancas, tempoRestantePretas);
-      if(tempoRestanteBrancas - tempoBrancas < 0) {
+      if(tempoRestanteBrancas - tempoBrancas <= 0) {
         tempoRestanteBrancas = tempoRestanteBrancas - tempoBrancas;
         beep3Vezes();
         estado = TERMINO;
@@ -89,7 +89,7 @@ void loop() {
     case PRETA_JOGA:
         tempoPretas = tempoAtual - startPretas;
         atualizaDisplay(tempoRestanteBrancas, tempoRestantePretas - tempoPretas);
-        if(tempoRestantePretas - tempoPretas < 0) {
+        if(tempoRestantePretas - tempoPretas <= 0) {
           tempoRestantePretas = tempoRestantePretas - tempoPretas;
           beep3Vezes();
           estado = TERMINO;
