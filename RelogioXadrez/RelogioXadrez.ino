@@ -1,8 +1,10 @@
 #include "LiquidCrystal.h"
+#include <EEPROM.h>
 
 const int buzzerPin = 12;
 const int buttonPinPreta = 3;
 const int buttonPinBranca = 2;
+
 const int beepsTotais = 3;
 const int AGUARDANDO_INICIO = 1;
 const int BRANCA_JOGA = 2;
@@ -21,14 +23,16 @@ long tempoBrancas, tempoPretas;
 long startBrancas, startPretas;
 long tempoRestanteBrancas, tempoRestantePretas;
 int indexSetup=0, contadorJogadas=0; 
-
+int ultimoEstadoAntesDaPausa;
 long configs[] = { 15000, 60000, 180000, 300000, 600000, 900000, 1200000, 1800000, 3600000, 7200000 } ;
-
+int memoria;
 
 void setup() {
   lcd.begin(16, 2); 
   lcd.clear();
-  tempoTotal = configs[0];
+  memoria = EEPROM.read(0); 
+  tempoTotal = configs[memoria];
+  indexSetup = memoria;
   pinMode(buzzerPin, OUTPUT); 
   pinMode(buttonPinPreta, INPUT_PULLUP);
   pinMode(buttonPinBranca, INPUT_PULLUP);
@@ -40,8 +44,7 @@ void setup() {
 void loop() { 
   long tempoAtual = millis();
   
- 
-  switch(estado) {
+   switch(estado) {
    
     case AGUARDANDO_INICIO:     
       lcd.clear();
@@ -51,7 +54,7 @@ void loop() {
       printTime(tempoTotal);
       if(digitalRead(buttonPinBranca)==0) {
         delay(250);
-        if(indexSetup == 9) {
+        if(indexSetup >= 9) {
           indexSetup = 0;
           tempoTotal = configs[0]; 
         } else {
@@ -61,6 +64,9 @@ void loop() {
         tempoRestantePretas = tempoTotal;
       }
       else if(digitalRead(buttonPinPreta)==0) {
+        if(memoria!=indexSetup) {
+          EEPROM.write(0,indexSetup);
+        }
         contadorJogadas++;
         startBrancas = tempoAtual;
         estado = BRANCA_JOGA;
@@ -73,16 +79,24 @@ void loop() {
       atualizaDisplay(tempoRestanteBrancas - tempoBrancas, tempoRestantePretas);
       if(tempoRestanteBrancas - tempoBrancas <= 0) {
         tempoRestanteBrancas = tempoRestanteBrancas - tempoBrancas;
-        beep3Vezes();
+        beepNVezes(3, 500);
         estado = TERMINO;
         
       }
-      else if(digitalRead(buttonPinBranca)==0) {
+      else if(digitalRead(buttonPinBranca)==0 && !digitalRead(buttonPinPreta)==0) {
         tempoRestanteBrancas = tempoRestanteBrancas - tempoBrancas;
         startPretas = tempoAtual;
         contadorJogadas++;
         estado = PRETA_JOGA;
+      } else  if(digitalRead(buttonPinBranca)==0 && digitalRead(buttonPinPreta)==0) {
+        ultimoEstadoAntesDaPausa = BRANCA_JOGA;
+        tempoRestanteBrancas = tempoRestanteBrancas - tempoBrancas;
+        Serial.println("PAUSA BRANCA");
+        estado = PAUSA;
+        beepNVezes(2,150);
+        delay(2000);     
       }
+  
       delay(100);
     break;
 
@@ -91,25 +105,59 @@ void loop() {
         atualizaDisplay(tempoRestanteBrancas, tempoRestantePretas - tempoPretas);
         if(tempoRestantePretas - tempoPretas <= 0) {
           tempoRestantePretas = tempoRestantePretas - tempoPretas;
-          beep3Vezes();
+          beepNVezes(3, 500);
           estado = TERMINO;
         }
-        else if(digitalRead(buttonPinPreta)==0) {
+        else if(digitalRead(buttonPinPreta)==0 && !digitalRead(buttonPinBranca)==0) {
           tempoRestantePretas = tempoRestantePretas - tempoPretas;
           startBrancas = tempoAtual;
           contadorJogadas++;
           estado = BRANCA_JOGA;
-        }
-        delay(100);    
+        } else if(digitalRead(buttonPinBranca)==0 && digitalRead(buttonPinPreta)==0) {
+          ultimoEstadoAntesDaPausa = PRETA_JOGA;
+          tempoRestantePretas = tempoRestantePretas - tempoPretas;
+          estado = PAUSA;  
+          beepNVezes(2,150);
+          delay(2000);
+        }  
+        delay(100);  
         break;
 
+    case PAUSA:
+      if(digitalRead(buttonPinBranca)==0 && digitalRead(buttonPinPreta)==0) {
+        if(ultimoEstadoAntesDaPausa == BRANCA_JOGA) {
+           startBrancas = tempoAtual;
+           tone(buzzerPin,250,200);
+           estado = BRANCA_JOGA;
+        } else if(ultimoEstadoAntesDaPausa == PRETA_JOGA) {
+           startPretas = tempoAtual;
+           tone(buzzerPin,250,200);
+           estado = PRETA_JOGA;
+        }
+        delay(500);
+      }
+      break;
+      
     case TERMINO:
       atualizaDisplay(tempoRestanteBrancas,tempoRestantePretas);
-      delay(5000);
+      if(digitalRead(buttonPinBranca)==0 && digitalRead(buttonPinPreta)==0) {
+        delay(1000);
+        if(digitalRead(buttonPinBranca)==0 && digitalRead(buttonPinPreta)==0) {
+          reset();
+          estado=AGUARDANDO_INICIO;
+        }
+      }
+      delay(200);
       break;
   }
 
 
+}
+
+void reset() {
+  lcd.clear();
+  tempoRestanteBrancas = tempoTotal;
+  tempoRestantePretas = tempoTotal;
 }
 
 void atualizaDisplay(long tempoBrancas, long tempoPretas) {
@@ -160,9 +208,9 @@ void printTime(long time) {
     lcd.print(segundos);
 }
 
-void beep3Vezes() {
-  for(int i=0;i<3;i++) {
-      tone(buzzerPin,500,500);
+void beepNVezes(int vezes, int tom) {
+  for(int i=0;i<vezes;i++) {
+      tone(buzzerPin,tom,500);
       delay(1000);
     }
 }
