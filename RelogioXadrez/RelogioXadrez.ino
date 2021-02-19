@@ -4,6 +4,8 @@
 const int buzzerPin = 12;
 const int buttonPinPreta = 3;
 const int buttonPinBranca = 2;
+const int ledPinBranca = 6;
+const int ledPinPreta = 7;
 
 const int beepsTotais = 3;
 const int AGUARDANDO_INICIO = 1;
@@ -33,6 +35,8 @@ void setup() {
   tempoTotal = configs[memoria];
   indexSetup = memoria;
   pinMode(buzzerPin, OUTPUT); 
+  pinMode(ledPinBranca, OUTPUT); 
+  pinMode(ledPinPreta, OUTPUT); 
   pinMode(buttonPinPreta, INPUT_PULLUP);
   pinMode(buttonPinBranca, INPUT_PULLUP);
   Serial.begin(9600);
@@ -51,6 +55,7 @@ void loop() {
       lcd.setCursor(0,1);
       lcd.print("SETUP: ");
       printTime(tempoTotal);
+      ligaLeds(false,true);
       if(digitalRead(buttonPinBranca)==0) {
         delay(250);
         if(indexSetup >= 9) {
@@ -69,11 +74,13 @@ void loop() {
         contadorJogadas++;
         startBrancas = tempoAtual;
         estado = BRANCA_JOGA;
+        ligaLeds(true,false);
       }
       delay(100);
     break;
 
     case BRANCA_JOGA:
+      
       tempoBrancas = tempoAtual - startBrancas;
       atualizaDisplay(tempoRestanteBrancas - tempoBrancas, tempoRestantePretas);
       if(tempoRestanteBrancas - tempoBrancas <= 0) {
@@ -87,10 +94,11 @@ void loop() {
         startPretas = tempoAtual;
         contadorJogadas++;
         estado = PRETA_JOGA;
+        ligaLeds(false,true);
       } else  if(digitalRead(buttonPinBranca)==0 && digitalRead(buttonPinPreta)==0) {
         ultimoEstadoAntesDaPausa = BRANCA_JOGA;
         tempoRestanteBrancas = tempoRestanteBrancas - tempoBrancas;
-        Serial.println("PAUSA BRANCA");
+        ligaLeds(true,true);
         estado = PAUSA;
         beepNVezes(2,150);
         delay(2000);     
@@ -105,6 +113,7 @@ void loop() {
         if(tempoRestantePretas - tempoPretas <= 0) {
           tempoRestantePretas = tempoRestantePretas - tempoPretas;
           beepNVezes(3, 500);
+          ligaLeds(false,false);
           estado = TERMINO;
         }
         else if(digitalRead(buttonPinPreta)==0 && !digitalRead(buttonPinBranca)==0) {
@@ -112,10 +121,12 @@ void loop() {
           startBrancas = tempoAtual;
           contadorJogadas++;
           estado = BRANCA_JOGA;
+          ligaLeds(true,false);
         } else if(digitalRead(buttonPinBranca)==0 && digitalRead(buttonPinPreta)==0) {
           ultimoEstadoAntesDaPausa = PRETA_JOGA;
           tempoRestantePretas = tempoRestantePretas - tempoPretas;
           estado = PAUSA;  
+          ligaLeds(true,true);
           beepNVezes(2,150);
           delay(2000);
         }  
@@ -127,10 +138,12 @@ void loop() {
         if(ultimoEstadoAntesDaPausa == BRANCA_JOGA) {
            startBrancas = tempoAtual;
            tone(buzzerPin,250,200);
+           ligaLeds(true,false);
            estado = BRANCA_JOGA;
         } else if(ultimoEstadoAntesDaPausa == PRETA_JOGA) {
            startPretas = tempoAtual;
            tone(buzzerPin,250,200);
+           ligaLeds(false,true);
            estado = PRETA_JOGA;
         }
         delay(500);
@@ -161,6 +174,7 @@ void reset() {
   tempoRestantePretas = tempoTotal;
   contadorJogadas=0;
   ultimoEstadoAntesDaPausa = AGUARDANDO_INICIO;
+  ligaLeds(false,true);
 }
 
 void atualizaDisplay(long tempoBrancas, long tempoPretas) {
@@ -209,6 +223,21 @@ void printTime(long time) {
     lcd.print(":");
     if(segundos<10) lcd.print("0");
     lcd.print(segundos);
+}
+
+void ligaLeds(boolean branca, boolean preta) {
+  if(branca) {
+    digitalWrite(ledPinBranca, HIGH);
+  } else {
+    digitalWrite(ledPinBranca, LOW);
+  }
+
+  if(preta) {
+    digitalWrite(ledPinPreta, HIGH);
+  } else {
+    digitalWrite(ledPinPreta, LOW);
+  }
+  
 }
 
 void beepNVezes(int vezes, int tom) {
